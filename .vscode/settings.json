@@ -1,0 +1,8 @@
+{
+  "chat.tools.terminal.autoApprove": {
+    "/^mkdir -p /Users/david/Documents/Github/wbc/web/public && cp /Users/david/Documents/Github/wbc/output/2026-02-21_03-07-03-376\\.json /Users/david/Documents/Github/wbc/web/public/data\\.json$/": {
+      "approve": true,
+      "matchCommandLine": true
+    }
+  }
+}
