@@ -52,7 +52,7 @@ function scrollTo(id: string) {
     <header class="sticky top-0 z-10 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <h1 class="text-lg font-bold text-balance">
-          WBC 2026 交易資料分析
+          WBC 2026 台灣 vs 日本 交易資料分析
         </h1>
         <div class="flex items-center gap-3">
           <nav class="hidden gap-1 md:flex">
