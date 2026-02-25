@@ -1,0 +1,712 @@
+{
+  "id": "1UgC0uDWP5pkBvMcw-hnk",
+  "name": "WBC 日本 vs 台灣票券監控",
+  "active": true,
+  "activeVersionId": "5964409b-f9b7-41a9-9b55-309651f97af7",
+  "isArchived": false,
+  "createdAt": "2026-02-02T13:42:13.574Z",
+  "updatedAt": "2026-02-22T05:13:17.776Z",
+  "nodes": [
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const html = $input.first().json.data;\n\n// 提取 data-page 屬性中的 JSON\nconst match = html.match(/data-page=\"([^\"]*)\"/);\nif (!match) {\n  return [];\n}\n\n// 解碼 HTML entities\nconst decoded = match[1]\n  .replace(/&quot;/g, '\"')\n  .replace(/&#039;/g, \"'\")\n  .replace(/&amp;/g, '&')\n  .replace(/&lt;/g, '<')\n  .replace(/&gt;/g, '>');\n\nconst data = JSON.parse(decoded);\n\n// 只篩選包含「日本」的比賽\nconst japanConcerts = data.props.concerts.filter(concert => \n  concert.name.includes('日本')\n);\n\n// 提取比賽資訊和票券數量（直接從 listings_count 取得）\nconst results = japanConcerts.map(concert => ({\n  json: {\n    concertId: concert.id,\n    name: concert.name,\n    date: concert.concert_date,\n    openTime: concert.open_time,\n    startTime: concert.start_time,\n    venue: concert.tour?.name || '',\n    ticketCount: concert.listings_count || 0,\n    hasTickets: (concert.listings_count || 0) > 0,\n    url: `https://tradead.tixplus.jp/wbc2026`\n  }\n}));\n\nreturn results;",
+        "notice": ""
+      },
+      "name": "解析日本隊比賽與票券",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        448
+      ],
+      "id": "5898206d-7a85-43ae-a219-688ba128c4e7"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "597243633",
+        "text": "=🎫 **日本隊比賽有票了！**\n\n📅 比賽：{{$json.name}}\n🗓️ 日期：{{$json.date}}\n⏰ 開場：{{$json.openTime}} / 開賽：{{$json.startTime}}\n🏟️ 場地：{{$json.venue}}\n🎟️ 可用票數：{{$json.ticketCount}} 張\n\n🔗 購票連結：{{$json.url}}",
+        "replyMarkup": "none",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "發送 Telegram 通知1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        336
+      ],
+      "id": "01b96a01-ff8d-461a-afb7-312ed9af41a5",
+      "webhookId": "ca8f0ab4-59c0-45b3-87c3-f85b9d6ecb5f",
+      "credentials": {
+        "telegramApi": {
+          "id": "0yoImp2gQXBtVkS5",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "notice": ""
+      },
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1024,
+        736
+      ],
+      "id": "d3f964cd-3359-4d18-94bc-26e3d24b4c39",
+      "name": "Error Trigger"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "597243633",
+        "text": "=n8n 檢查 WBC 讓票平台失敗 \n- {{ $json.workflow.name }}\n- {{ $json.execution.error.message }}\n",
+        "replyMarkup": "none",
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -816,
+        736
+      ],
+      "id": "f63d7b57-6c7a-4840-91db-994b8cd34559",
+      "name": "Send a text message",
+      "webhookId": "b8ce88b5-6d7d-4652-a71e-fdcd60c4a138",
+      "credentials": {
+        "telegramApi": {
+          "id": "0yoImp2gQXBtVkS5",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "notice": "",
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "notice": "",
+              "expression": "0 */1 6-23 * * *"
+            }
+          ]
+        }
+      },
+      "name": "CronJob",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1376,
+        448
+      ],
+      "id": "6dd5228d-64ca-4bef-9870-4e84f64d2292"
+    },
+    {
+      "parameters": {
+        "curlImport": "",
+        "method": "GET",
+        "url": "https://tradead.tixplus.jp/wbc2026",
+        "authentication": "none",
+        "provideSslCertificates": false,
+        "sendQuery": false,
+        "sendHeaders": false,
+        "sendBody": false,
+        "options": {},
+        "infoMessage": ""
+      },
+      "name": "抓取頁面",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1184,
+        448
+      ],
+      "id": "b83fb478-3652-4761-96b3-3297e4f535e0"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.hasTickets}}",
+              "operation": "equal",
+              "value2": true
+            }
+          ]
+        },
+        "combineOperation": "all"
+      },
+      "name": "檢查是否有票",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -784,
+        448
+      ],
+      "id": "86193638-f258-45c0-9a36-8fdc50d4159a"
+    },
+    {
+      "parameters": {
+        "notice": "",
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 1,
+              "triggerAtMinute": 0
+            }
+          ]
+        }
+      },
+      "name": "每小時執行",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1376,
+        192
+      ],
+      "id": "58fcf635-e8a7-4c9c-831f-6602b69bc0df",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "curlImport": "",
+        "method": "GET",
+        "url": "https://eplus.tickets/en/sf/ibt/detail/0260360001-P0030081P0030082P0030083P0030084P0030085P0030086P0030087P0030088P0030089P0030090",
+        "authentication": "none",
+        "provideSslCertificates": false,
+        "sendQuery": true,
+        "specifyQuery": "keypair",
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "P6",
+              "value": "i00"
+            }
+          ]
+        },
+        "sendHeaders": false,
+        "sendBody": false,
+        "options": {
+          "timeout": 10000
+        },
+        "infoMessage": ""
+      },
+      "name": "抓取 eplus 頁面",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1184,
+        192
+      ],
+      "id": "8522508d-3e3d-427e-a290-19a4138cc115",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const html = $input.first().json.data;\n\n// 使用正則表達式找出所有比賽區塊\nconst blockRegex = /<article[^>]*class=\"block-ticket-article[^>]*>.*?<\\/article>/gs;\nconst blocks = [...html.matchAll(blockRegex)];\n\nconst results = [];\n\nfor (const blockMatch of blocks) {\n  const block = blockMatch[0];\n  \n  // 提取比賽標題\n  const titleMatch = block.match(/class=\"block-ticket-article__title\"[^>]*>([\\s\\S]*?)<\\/h3>/);\n  if (!titleMatch) continue;\n  \n  const title = titleMatch[1].replace(/<[^>]*>/g, '').trim();\n  \n  // 只處理包含 Japan 或日本的比賽\n  if (!title.includes('Japan') && !title.includes('日本')) {\n    continue;\n  }\n  \n  // 提取日期\n  const dateMatch = block.match(/class=\"block-ticket-article__date\"[^>]*>([^<]+)/);\n  const date = dateMatch ? dateMatch[1].trim() : '';\n  \n  // 提取時間\n  const timeMatch = block.match(/class=\"block-ticket-article__time\"[^>]*>([^<]+)/);\n  const time = timeMatch ? timeMatch[1].trim() : '';\n  \n  // 檢查是否售罄\n  const isSoldOut = block.includes('Sold out') || block.includes('sold out') || block.includes('売り切れ');\n  \n  // 檢查是否有購票按鈕（表示有票）\n  const hasBuyButton = block.includes('buy a ticket') || block.includes('btn-buy');\n  \n  results.push({\n    json: {\n      title: title,\n      date: date,\n      time: time,\n      isSoldOut: isSoldOut,\n      hasTickets: !isSoldOut && hasBuyButton,\n      url: 'https://eplus.tickets/en/sf/ibt/detail/0260360001-P0030081P0030082P0030083P0030084P0030085P0030086P0030087P0030088P0030089P0030090?P6=i00'\n    }\n  });\n}\n\nreturn results;",
+        "notice": ""
+      },
+      "name": "解析 Japan 比賽",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -976,
+        192
+      ],
+      "id": "af392a34-17ee-4062-9624-ab513e6fdbde",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "597243633",
+        "text": "=🎫 **eplus Japan 比賽有票了！**\n\n🏟️ 比賽：{{$json.title}}\n📅 日期：{{$json.date}}\n⏰ 時間：{{$json.time}}\n\n🔗 購票連結：{{$json.url}}\n\n⚠️ 快搶！",
+        "replyMarkup": "none",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "發送 Telegram 通知",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        96
+      ],
+      "id": "cd4c9182-4e0c-4a48-a970-c64ac612cf68",
+      "webhookId": "c52535ff-2129-4ebe-8528-54faafbed06a",
+      "credentials": {
+        "telegramApi": {
+          "id": "0yoImp2gQXBtVkS5",
+          "name": "Telegram account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.hasTickets}}",
+              "operation": "equal",
+              "value2": true
+            }
+          ]
+        },
+        "combineOperation": "all"
+      },
+      "name": "檢查是否有票1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -784,
+        192
+      ],
+      "id": "3e9a6c62-5a24-46ac-9bcb-613cfca7b0a5",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "notice": "",
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "notice": "",
+              "expression": "*/15 * 6-23 * * *"
+            }
+          ]
+        }
+      },
+      "name": "每5分鐘執行",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1360,
+        -32
+      ],
+      "id": "014a5df8-8317-4fb7-9269-ec793736a5f2",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "curlImport": "",
+        "method": "GET",
+        "url": "https://tradead.tixplus.jp/wbc2026/buy/bidding/listings/1517",
+        "authentication": "none",
+        "provideSslCertificates": false,
+        "sendQuery": false,
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n  \"accept\": \"text/html, application/xhtml+xml\",\n    \"accept-language\": \"zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6,zh-CN;q=0.5\",\n    \"content-type\": \"application/json\",\n    \"priority\": \"u=1, i\",\n    \"sec-ch-ua\": \"\\\"Not:A-Brand\\\";v=\\\"99\\\", \\\"Google Chrome\\\";v=\\\"145\\\", \\\"Chromium\\\";v=\\\"145\\\"\",\n    \"sec-ch-ua-mobile\": \"?0\",\n    \"sec-ch-ua-platform\": \"\\\"macOS\\\"\",\n    \"sec-fetch-dest\": \"empty\",\n    \"sec-fetch-mode\": \"cors\",\n    \"sec-fetch-site\": \"same-origin\",\n    \"x-inertia\": \"true\",\n    \"x-inertia-version\": \"52f9af2722878af6a3c1333e9a812f51\",\n    \"x-requested-with\": \"XMLHttpRequest\",\n    \"x-xsrf-token\": \"eyJpdiI6IndOVzFDVUFOcU1ReTMwYUEvdGFZQlE9PSIsInZhbHVlIjoiZWlkZGd2MTh5Zm5aRGtPU3ZyUTRvb2pXZ1IrRkhZNUMvVWtMS2JFV1RtNTVwVzdETXhZSGJFajBwd2R2OEJac0NJcndvNEVibEpnT3lvOERicWNOYmRKZkN6cVlic1FvWVRlN1hyWWYzdXRmRjVmb3BVU01VVHQxRk5BdkdQOG0iLCJtYWMiOiI5YjYyMjA2NzJlNzYyMDNiMzhlZjY3MTYzZDZjNjIwNGU3ZDczZjYzMGY4NWUzNjJhYWFjODFmMmJhY2YwYWY1IiwidGFnIjoiIn0=\"\n}",
+        "sendBody": false,
+        "options": {},
+        "infoMessage": ""
+      },
+      "name": "抓取票券頁面",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1168,
+        -32
+      ],
+      "id": "147c06d2-41fd-4c7d-93ab-41ec3457cb71"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const html = $input.first().json.data;\n\n// 提取 data-page 屬性中的 JSON\nconst match = html.match(/data-page=\"([^\"]*)\"/);\nif (!match) {\n  return [{ json: { hasTickets: false, ticketCount: 0, message: '無法解析頁面資料' } }];\n}\n\n// 解碼 HTML entities\nconst decoded = match[1]\n  .replace(/&quot;/g, '\"')\n  .replace(/&#039;/g, \"'\")\n  .replace(/&amp;/g, '&')\n  .replace(/&lt;/g, '<')\n  .replace(/&gt;/g, '>');\n\nconst data = JSON.parse(decoded);\nconst props = data.props || {};\n\n// 取得比賽資訊\nconst concert = props.concert || {};\nconst concertName = concert.name || 'N/A';\nconst concertDate = concert.concert_date || 'N/A';\nconst concertTime = concert.start_time || 'N/A';\n\n// 取得票券列表\nconst listingsData = props.listings || {};\nconst tickets = listingsData.data || [];\n\n// 篩選可購買的票券（排除已完成交易的票）\nconst availableTickets = tickets.filter(ticket => {\n  const status = ticket.status || '';\n  // 只要不是已完成交易或已取消的狀態\n  return status !== 'settlement_complete' && \n         status !== 'cancelled'\n});\n\nconst ticketCount = availableTickets.length;\nconst hasTickets = ticketCount > 0;\n\n// 準備票券詳情\nlet ticketDetails = [];\nif (hasTickets) {\n  ticketDetails = availableTickets.slice(0, 5).map(ticket => {\n    const seatType = ticket.seat_type?.name || 'N/A';\n    const price = ticket.total_resale_price || 0;\n    const ticketCount = ticket.ticket_count || 1;\n    return {\n      seatType: seatType,\n      price: price,\n      ticketCount: ticketCount,\n      status: ticket.status\n    };\n  });\n}\n\nreturn [{\n  json: {\n    concertName: concertName,\n    concertDate: concertDate,\n    concertTime: concertTime,\n    hasTickets: hasTickets,\n    ticketCount: ticketCount,\n    tickets: ticketDetails,\n    url: 'https://tradead.tixplus.jp/wbc2026/buy/bidding/listings/1517',\n    checkTime: new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Tokyo' })\n  }\n}];",
+        "notice": ""
+      },
+      "name": "解析票券資料",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -960,
+        -32
+      ],
+      "id": "0acc5ad1-7f37-4c97-99c8-c3d92a7a2c2e"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.hasTickets}}",
+              "operation": "equal",
+              "value2": true
+            }
+          ]
+        },
+        "combineOperation": "all"
+      },
+      "name": "檢查是否有可購買的票",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -768,
+        -32
+      ],
+      "id": "a8d55af6-aba0-4fdb-b308-b823624775ae"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "597243633",
+        "text": "=🎫 **有票了！快搶！**\n\n🏟️ {{$json.concertName}}\n📅 {{$json.concertDate}} {{$json.concertTime}}\n🎟️ 可用票數：**{{$json.ticketCount}}** 張\n\n{{ $json.tickets.map((t, i) => `${i+1}. ${t.seatType} - ¥${t.price.toLocaleString()}`).join('\\n') }}\n\n🔗 {{$json.url}}\n⏰ 檢查時間：{{$json.checkTime}}",
+        "replyMarkup": "none",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "發送 Telegram 通知2",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -128
+      ],
+      "id": "65091f98-5a51-41f9-a937-fc9fce6a336c",
+      "webhookId": "1c91b5c6-60c6-48c7-b0d3-a933be998414",
+      "credentials": {
+        "telegramApi": {
+          "id": "0yoImp2gQXBtVkS5",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "curlImport": "",
+        "method": "GET",
+        "url": "https://tradead.tixplus.jp/wbc2026/buy/bidding/listings/1517",
+        "authentication": "none",
+        "provideSslCertificates": false,
+        "sendQuery": false,
+        "sendHeaders": true,
+        "specifyHeaders": "json",
+        "jsonHeaders": "{\n    \"accept\": \"text/html, application/xhtml+xml\",\n    \"accept-language\": \"zh-TW,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6,zh-CN;q=0.5\",\n    \"content-type\": \"application/json\",\n    \"priority\": \"u=1, i\",\n    \"sec-ch-ua\": \"\\\"Not:A-Brand\\\";v=\\\"99\\\", \\\"Google Chrome\\\";v=\\\"145\\\", \\\"Chromium\\\";v=\\\"145\\\"\",\n    \"sec-ch-ua-mobile\": \"?0\",\n    \"sec-ch-ua-platform\": \"\\\"macOS\\\"\",\n    \"sec-fetch-dest\": \"empty\",\n    \"sec-fetch-mode\": \"cors\",\n    \"sec-fetch-site\": \"same-origin\",\n    \"x-inertia\": \"true\",\n    \"x-inertia-version\": \"52f9af2722878af6a3c1333e9a812f51\",\n    \"x-requested-with\": \"XMLHttpRequest\",\n    \"x-xsrf-token\": \"eyJpdiI6IndOVzFDVUFOcU1ReTMwYUEvdGFZQlE9PSIsInZhbHVlIjoiZWlkZGd2MTh5Zm5aRGtPU3ZyUTRvb2pXZ1IrRkhZNUMvVWtMS2JFV1RtNTVwVzdETXhZSGJFajBwd2R2OEJac0NJcndvNEVibEpnT3lvOERicWNOYmRKZkN6cVlic1FvWVRlN1hyWWYzdXRmRjVmb3BVU01VVHQxRk5BdkdQOG0iLCJtYWMiOiI5YjYyMjA2NzJlNzYyMDNiMzhlZjY3MTYzZDZjNjIwNGU3ZDczZjYzMGY4NWUzNjJhYWFjODFmMmJhY2YwYWY1IiwidGFnIjoiIn0=\"\n  }",
+        "sendBody": false,
+        "options": {},
+        "infoMessage": ""
+      },
+      "name": "抓取票券頁面1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -1136,
+        -288
+      ],
+      "id": "51259610-b09c-4eb8-8e0a-9f8ebb2665de"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const input = $input.first().json;\n\nlet data = null;\n\n// 1) 優先處理 Inertia JSON 回應\nif (input && input.props) {\n  data = input;\n} else if (input && input.body && typeof input.body === 'object' && input.body.props) {\n  data = input.body;\n}\n\n// 2) fallback：若拿到的是 HTML，就從 data-page 解析\nif (!data) {\n  const html = typeof input?.body === 'string' ? input.body : (typeof input === 'string' ? input : '');\n  const match = html.match(/data-page=\"([^\"]*)\"/);\n\n  if (!match) {\n    return [{ json: { hasTickets: false, ticketCount: 0, message: '無法解析頁面資料（非 Inertia JSON/HTML）' } }];\n  }\n\n  const decoded = match[1]\n    .replace(/&quot;/g, '\"')\n    .replace(/&#039;/g, \"'\")\n    .replace(/&amp;/g, '&')\n    .replace(/&lt;/g, '<')\n    .replace(/&gt;/g, '>');\n\n  data = JSON.parse(decoded);\n}\n\nconst props = data.props || {};\n\nconst concert = props.concert || {};\nconst concertName = concert.name || 'N/A';\nconst concertDate = concert.concert_date || 'N/A';\nconst concertTime = concert.start_time || 'N/A';\n\nconst listingsData = props.listings || {};\nconst tickets = listingsData.data || [];\n\nconst availableTickets = tickets.filter(ticket => {\n  const status = ticket.status || '';\n  return status !== 'settlement_complete' &&\n         status !== 'cancelled' &&\n         ticket.is_biddable !== false;\n});\n\nconst ticketCount = availableTickets.length;\nconst hasTickets = ticketCount > 0;\n\nlet ticketDetails = [];\nif (hasTickets) {\n  ticketDetails = availableTickets.slice(0, 5).map(ticket => {\n    const seatType = ticket.seat_type?.name || 'N/A';\n    const price = ticket.total_resale_price || 0;\n    const count = ticket.ticket_count || 1;\n    return {\n      id: ticket.id,\n      seatType,\n      price,\n      ticketCount: count,\n      status: ticket.status,\n      buyUrl: `https://tradead.tixplus.jp/wbc2026/buy/bidding/payment-type/${ticket.id}`\n    };\n  });\n}\n\nreturn [{\n  json: {\n    concertName,\n    concertDate,\n    concertTime,\n    hasTickets,\n    ticketCount,\n    tickets: ticketDetails,\n    url: 'https://tradead.tixplus.jp/wbc2026/buy/bidding/listings/1517',\n    checkTime: new Date().toLocaleString('zh-TW', { timeZone: 'Asia/Tokyo' })\n  }\n}];",
+        "notice": ""
+      },
+      "name": "解析票券資料1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -944,
+        -288
+      ],
+      "id": "54e68fc8-5abc-4923-827a-49424c2719bb"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.hasTickets}}",
+              "operation": "equal",
+              "value2": true
+            }
+          ]
+        },
+        "combineOperation": "all"
+      },
+      "name": "檢查是否有可購買的票1",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -736,
+        -288
+      ],
+      "id": "5c39cbe7-d6e4-4498-bf59-779af532c417"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "597243633",
+        "text": "=🎫 **有票了！快搶！**\n\n🏟️ {{$json.concertName}}\n📅 {{$json.concertDate}} {{$json.concertTime}}\n🎟️ 可用票數：**{{$json.ticketCount}}** 張\n\n{{ $json.tickets.map((t, i) => `${i+1}. ${t.seatType} - ¥${t.price.toLocaleString()} (x${t.ticketCount})\\n ${t.buyUrl}`).join('\\n\\n') }}\n\n🔗 {{$json.url}}\n⏰ 檢查時間：{{$json.checkTime}}",
+        "replyMarkup": "none",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "發送 Telegram 通知3",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        -400
+      ],
+      "id": "75068dac-5178-424a-9c4b-d8566036e68f",
+      "webhookId": "2b997df2-755d-47d5-b293-f4d6e9cd2101",
+      "credentials": {
+        "telegramApi": {
+          "id": "0yoImp2gQXBtVkS5",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "notice": "",
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "notice": "",
+              "expression": "*/5 * 6-23 * * *"
+            }
+          ]
+        }
+      },
+      "name": "CronJob(1)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1344,
+        -288
+      ],
+      "id": "8fbbb4fe-24cd-4913-924b-d0020aab0a15"
+    }
+  ],
+  "connections": {
+    "解析日本隊比賽與票券": {
+      "main": [
+        [
+          {
+            "node": "檢查是否有票",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CronJob": {
+      "main": [
+        [
+          {
+            "node": "抓取頁面",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "抓取頁面": {
+      "main": [
+        [
+          {
+            "node": "解析日本隊比賽與票券",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "檢查是否有票": {
+      "main": [
+        [
+          {
+            "node": "發送 Telegram 通知1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "每小時執行": {
+      "main": [
+        [
+          {
+            "node": "抓取 eplus 頁面",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "抓取 eplus 頁面": {
+      "main": [
+        [
+          {
+            "node": "解析 Japan 比賽",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析 Japan 比賽": {
+      "main": [
+        [
+          {
+            "node": "檢查是否有票1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "檢查是否有票1": {
+      "main": [
+        [
+          {
+            "node": "發送 Telegram 通知",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "每5分鐘執行": {
+      "main": [
+        [
+          {
+            "node": "抓取票券頁面",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "抓取票券頁面": {
+      "main": [
+        [
+          {
+            "node": "解析票券資料",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析票券資料": {
+      "main": [
+        [
+          {
+            "node": "檢查是否有可購買的票",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "檢查是否有可購買的票": {
+      "main": [
+        [
+          {
+            "node": "發送 Telegram 通知2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "抓取票券頁面1": {
+      "main": [
+        [
+          {
+            "node": "解析票券資料1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "解析票券資料1": {
+      "main": [
+        [
+          {
+            "node": "檢查是否有可購買的票1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "檢查是否有可購買的票1": {
+      "main": [
+        [
+          {
+            "node": "發送 Telegram 通知3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CronJob(1)": {
+      "main": [
+        [
+          {
+            "node": "抓取票券頁面1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Taipei",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "staticData": {
+    "node:CronJob": {
+      "recurrenceRules": []
+    },
+    "node:CronJob(1)": {
+      "recurrenceRules": []
+    }
+  },
+  "pinData": {}
+}
